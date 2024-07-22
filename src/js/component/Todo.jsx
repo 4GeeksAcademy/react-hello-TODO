@@ -1,12 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function Todo() {
     const [inputValues, setInputValues] = useState(['', '', '', '', '']);
     const [todo, setTodo] = useState([]);
 
+    useEffect(() => {
+        // Obtener las tareas de la API cuando el componente se monta
+        fetch('https://playground.4geeks.com/todo/user/alesanchezr')
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setTodo(data);
+                } else {
+                    console.error('API response is not an array:', data);
+                    setTodo([]);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching todos:', error);
+                setTodo([]);
+            });
+    }, []);
+
+    const updateTodosOnServer = (newTodos) => {
+        // Actualizar la lista de tareas en el servidor
+        fetch('https://playground.4geeks.com/todo/user/alesanchezr', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newTodos),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (Array.isArray(data)) {
+                setTodo(data);
+            } else {
+                console.error('API response is not an array:', data);
+                setTodo(newTodos);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating todos:', error);
+            setTodo(newTodos);
+        });
+    };
+
     const handleKeyPress = (e, index) => {
         if (e.key === 'Enter' && inputValues[index].trim() !== '') {
-            setTodo([...todo, inputValues[index]]);
+            const newTodo = [...todo, inputValues[index]];
+            setTodo(newTodo);
+            updateTodosOnServer(newTodo);
             const newInputValues = [...inputValues];
             newInputValues[index] = '';
             setInputValues(newInputValues);
@@ -20,7 +64,22 @@ function Todo() {
     };
 
     const handleDelete = (index) => {
-        setTodo(todo.filter((_, i) => i !== index));
+        const newTodo = todo.filter((_, i) => i !== index);
+        setTodo(newTodo);
+        updateTodosOnServer(newTodo);
+    };
+
+    const handleClearAll = () => {
+        fetch('https://playground.4geeks.com/todo/user/alesanchezr', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(() => {
+            setTodo([]);
+        })
+        .catch(error => console.error('Error clearing todos:', error));
     };
 
     const placeholders = [
@@ -58,6 +117,7 @@ function Todo() {
             </ul>
             <div className='mt-3'>
                 <span>{todo.length} item{todo.length !== 1 ? 's' : ''} left</span>
+                <button className='btn btn-warning btn-sm ms-2' onClick={handleClearAll}>Clear All</button>
             </div>
         </div>
     );
